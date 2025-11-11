@@ -1,0 +1,368 @@
+﻿<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>電車で文章題クイズ 🚆</title>
+<style>
+  :root{
+    --bg:#f7f8fb; --card:#ffffff; --ink:#222; --muted:#666; --accent:#2f7dff;
+    --ok:#22bb66; --ng:#ff4d4f; --rail:#c9d3e6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    color:var(--ink); background:linear-gradient(180deg,#eef3ff 0%,#f8fbff 50%, var(--bg) 100%);
+    display:flex; min-height:100svh; align-items:center; justify-content:center; padding:16px;
+  }
+  .app{
+    background:var(--card); width:min(880px,100%); border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.08);
+    overflow:hidden; border:1px solid #e8eefc;
+  }
+  header{
+    padding:16px 20px; display:flex; gap:12px; align-items:center; justify-content:space-between; border-bottom:1px solid #eef2fe;
+  }
+  header .title{ font-weight:800; letter-spacing:.02em; display:flex; gap:8px; align-items:center; }
+  header .title .train{ font-size:24px }
+  header .meta{ display:flex; gap:16px; color:var(--muted); font-size:14px; align-items:center; }
+  header .pill{ background:#f1f5ff; color:#2a5bd7; padding:6px 10px; border-radius:999px; font-weight:700 }
+
+  .track{
+    position:relative; height:120px; background:linear-gradient(180deg,#fff, #fbfdff);
+    display:flex; align-items:flex-end; padding:0 20px 22px;
+    border-bottom:1px solid #eef2fe;
+  }
+  .rail{
+    position:relative; width:100%; height:10px; background:var(--rail); border-radius:6px; overflow:hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.05);
+  }
+  .sleepers{
+    position:absolute; inset:0; display:grid; grid-auto-flow:column; grid-auto-columns:32px; align-items:stretch;
+  }
+  .sleepers::before,.sleepers::after{
+    content:""; display:block;
+  }
+  .sleepers div{ border-left:4px solid #b8c5dc; opacity:.7 }
+  .train{
+    position:absolute; bottom:46px; left:20px; translate:0 0; transition: transform .6s cubic-bezier(.2,.8,.2,1);
+    font-size:34px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.15));
+  }
+
+  .content{
+    padding:20px; display:grid; gap:16px;
+    grid-template-columns: 1fr 260px;
+  }
+  @media (max-width:720px){
+    .content{ grid-template-columns: 1fr; }
+  }
+
+  .card{
+    background:#fff; border:1px solid #eef2fe; border-radius:12px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.04);
+  }
+  .q{
+    font-size:18px; line-height:1.6; white-space:pre-wrap;
+  }
+  .answer-row{
+    display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;
+  }
+  input[type="number"], input[type="text"]{
+    font-size:18px; padding:10px 12px; border:1px solid #dfe6fb; border-radius:10px; outline:none; width:220px;
+  }
+  input:focus{ border-color:var(--accent); box-shadow: 0 0 0 3px rgba(47,125,255,.15); }
+  button{
+    appearance:none; border:none; background:var(--accent); color:#fff; padding:10px 14px; border-radius:10px;
+    font-weight:700; cursor:pointer; transition:transform .08s ease, box-shadow .2s ease, background .2s ease;
+    box-shadow:0 8px 20px rgba(47,125,255,.25);
+  }
+  button:active{ transform: translateY(1px) }
+  .btn-ghost{ background:#eef4ff; color:#2a5bd7; box-shadow:none }
+  .btn-danger{ background:var(--ng) }
+  .btn-ok{ background:var(--ok) }
+
+  .side{ display:grid; gap:12px; }
+  .stat{ display:flex; justify-content:space-between; font-size:14px; color:var(--muted) }
+  .progress{
+    height:10px; background:#eef2fe; border-radius:999px; overflow:hidden;
+  }
+  .bar{ height:100%; width:0%; background:linear-gradient(90deg,#2f7dff,#5da7ff); transition: width .4s ease }
+  .hint{ color:#2a5bd7; font-size:14px; background:#f4f8ff; padding:8px 10px; border-radius:8px; border:1px solid #e6efff }
+
+  .result{
+    display:none; font-size:18px; text-align:center; padding:8px 0;
+  }
+  .result.ok{ color:var(--ok) }
+  .result.ng{ color:var(--ng) }
+
+  .shake{ animation:shake .38s ease both }
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)}
+    60%{transform:translateX(-4px)}
+    80%{transform:translateX(4px)}
+  }
+  .fade{ animation:fade .35s ease both }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+
+  footer{
+    padding:12px 20px; border-top:1px solid #eef2fe; font-size:12px; color:var(--muted); display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap;
+  }
+  .kbd{ font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; background:#f3f5fa; border:1px solid #e5e9f5; padding:2px 6px; border-radius:6px }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title"><span class="train">🚆</span><span>電車で文章題クイズ</span></div>
+      <div class="meta">
+        <div class="pill">小4向け</div>
+        <div>16問 / 数字入力</div>
+      </div>
+    </header>
+
+    <div class="track">
+      <div class="rail">
+        <div class="sleepers" id="sleepers"></div>
+      </div>
+      <div class="train" id="train" aria-hidden="true">🚆</div>
+    </div>
+
+    <div class="content">
+      <section class="card">
+        <div class="q fade" id="question">読み込み中…</div>
+        <div class="answer-row">
+          <input id="answer" inputmode="numeric" pattern="[0-9]*" type="number" placeholder="答えを入力" />
+          <button id="submit">こたえる</button>
+          <button id="next" class="btn-ghost">次へ</button>
+        </div>
+        <div id="feedback" class="result" role="status" aria-live="polite"></div>
+        <div id="hint" class="hint" style="display:none;"></div>
+      </section>
+
+      <aside class="side">
+        <div class="card">
+          <div class="stat"><span>進捗</span><span><b id="pos">1</b>/<span id="total">10</span></span></div>
+          <div class="progress"><div class="bar" id="bar"></div></div>
+        </div>
+        <div class="card">
+          <div class="stat"><span>スコア</span><span><b id="score">0</b> 点（正解1問=10点）</span></div>
+          <div class="stat"><span>ベスト</span><span><b id="best">0</b> 点</span></div>
+        </div>
+        <div class="card" style="display:grid; gap:8px;">
+          <button id="shuffle" class="btn-ghost">順番をランダムにする</button>
+          <button id="showHint" class="btn-ghost">ヒント</button>
+          <button id="restart" class="btn-danger">はじめから</button>
+          <small style="color:var(--muted)">
+            操作ヒント：<span class="kbd">Enter</span> で回答、<span class="kbd">N</span> で次へ
+          </small>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div>© 電車で学ぶ算数 / ローカルでそのまま動きます</div>
+      <div>問題は <span class="kbd">questions</span> 配列を書き換えるだけで差し替えOK</div>
+    </footer>
+  </div>
+
+<script>
+/* ===========================
+   1) 出題データ（ここを書き換えるだけでOK）
+   =========================== */
+const questions = [
+  // レベル1：たし算・ひき算
+  { text: "行きは5駅とまりました。帰りは2駅少なくとまりました。あわせて何駅？", answer: 8, hint: "行き + (行き − 少ない数)" },
+  { text: "行きは7駅とまりました。帰りは3駅少なくとまりました。あわせて何駅？", answer: 11, hint: "7 + (7 − 3)" },
+  { text: "行きは6駅とまりました。帰りは1駅少なくとまりました。あわせて何駅？", answer: 11, hint: "6 + (6 − 1)" },
+  { text: "行きは8駅とまりました。帰りは2駅少なくとまりました。あわせて何駅？", answer: 14, hint: "8 + (8 − 2)" },
+
+  // レベル2：1.5倍
+  { text: "A線は1時間に4本。B線はA線の1.5倍。B線は1時間に何本？", answer: 6, hint: "1.5倍は「1倍＋半分」→ 4 + 2" },
+  { text: "A線は1時間に6本。B線はA線の1.5倍。B線は1時間に何本？", answer: 9, hint: "6 + 3 = 9" },
+  { text: "A線は1時間に2本。B線はA線の1.5倍。B線は1時間に何本？", answer: 3, hint: "2 + 1 = 3" },
+
+
+// レベル2.25：A→Bを求める（1.5倍−5の直接計算）
+{ text: "BさんはAさんの1.5倍より5人少ない。Aさんが20人のとき、Bさんは何人？",
+  answer: 25,
+  hint: "線分図ヒント：Aを20こ分にして、Bはその1.5倍→30。そこから−5で25人！" },
+
+{ text: "BさんはAさんの1.5倍より5人少ない。Aさんが30人のとき、Bさんは何人？",
+  answer: 40,
+  hint: "線分図ヒント：Aの1.5倍は45。そこから−5でBは40人。" },
+
+{ text: "BさんはAさんの1.5倍より5人少ない。Aさんが40人のとき、Bさんは何人？",
+  answer: 55,
+  hint: "線分図ヒント：Aの1.5倍は60。そこから−5でBは55人。" },
+
+
+// レベル2.5：1.5倍より5人少ない（B→Aを求める）
+{ text: "BさんはAさんの1.5倍より5人少ない。Bさんが25人のとき、Aさんは何人？",
+  answer: 20,
+  hint: "線分図ヒント：BはAの1.5倍−5。まず−5を戻して25+5=30。30はAの1.5倍→1.5A=30→A=20。" },
+
+{ text: "BさんはAさんの1.5倍より5人少ない。Bさんが40人のとき、Aさんは何人？",
+  answer: 30,
+  hint: "線分図ヒント：40+5=45が1.5A→A=45÷1.5=30。つまりA:B=2:3の関係を逆に使うよ。" },
+
+{ text: "BさんはAさんの1.5倍より5人少ない。Bさんが55人のとき、Aさんは何人？",
+  answer: 40,
+  hint: "線分図ヒント：55+5=60が1.5A。60÷1.5=40で、Aさんは40人！Aの1.5倍(60)から−5でBが55。" },
+
+
+
+  // レベル3：□の式（整数解に調整済）
+{ text: "BさんはAさんの1.5倍より5人少ない。2人で200人。Aさんは何人？",
+  answer: 82,
+  hint: "線分図ヒント：Bの「−5」をいったん戻す→合計は200+5=205。A:B=1:1.5=2:3（合計5ぶん）。205を5等分→1ぶん=41。Aは2ぶん→41×2=82。" },
+{ text: "BさんはAさんの1.5倍より5人少ない。2人で95人。Aさんは何人？",
+  answer: 40,
+  hint: "線分図ヒント：Bの「−5」を戻して合計95+5=100。A:B=2:3（5ぶん）なので100を5等分→1ぶん=20。Aは2ぶん→20×2=40。" },
+{ text: "BさんはAさんの1.5倍より5人少ない。2人で165人。Aさんは何人？",
+  answer: 68,
+  hint: "線分図ヒント：Bの「−5」を戻して合計165+5=170。A:B=2:3（5ぶん）→170を5等分→1ぶん=34。Aは2ぶん→34×2=68。" },
+];
+
+/* ===========================
+   2) 状態・要素取得
+   =========================== */
+let order = [...questions.keys()]; // 出題順序（シャッフル可）
+let idx = 0;                       // 現在の問題番号（order上）
+let score = 0;
+let best = Number(localStorage.getItem("train_quiz_best") || 0);
+
+const $ = (s)=>document.querySelector(s);
+const qEl = $("#question");
+const aEl = $("#answer");
+const submitBtn = $("#submit");
+const nextBtn = $("#next");
+const feedback = $("#feedback");
+const hintEl = $("#hint");
+const posEl = $("#pos");
+const totalEl = $("#total");
+const barEl = $("#bar");
+const scoreEl = $("#score");
+const bestEl = $("#best");
+const trainEl = $("#train");
+const sleepers = $("#sleepers");
+
+/* レールの枕木を適当に増やす（見た目） */
+function buildSleepers(n=40){
+  sleepers.innerHTML = "";
+  for(let i=0;i<n;i++) sleepers.appendChild(document.createElement("div"));
+}
+buildSleepers();
+
+/* ===========================
+   3) 基本関数
+   =========================== */
+function render(){
+  const i = order[idx];
+  const total = questions.length;
+  totalEl.textContent = total;
+  posEl.textContent = idx+1;
+  const {text} = questions[i];
+  qEl.textContent = text;
+  qEl.classList.remove("shake"); qEl.classList.add("fade");
+  aEl.value = ""; aEl.focus({ preventScroll:true });
+  feedback.style.display = "none";
+  hintEl.style.display = "none";
+  // 進捗バー
+  barEl.style.width = `${(idx)/(total)*100}%`;
+}
+
+function moveTrain(){
+  // コンテナ幅からざっくり計算（駅=問題の数）
+  const total = questions.length;
+  const track = document.querySelector(".track");
+  const leftPad = 20, rightPad = 20;
+  const usable = track.clientWidth - (leftPad+rightPad) - 40; // アイコン幅の余白
+  const step = usable / total;
+  const x = leftPad + step * (idx+1);
+  trainEl.style.transform = `translateX(${x}px)`;
+}
+
+function judge(){
+  const i = order[idx];
+  const ansExpected = String(questions[i].answer).trim();
+  const ansUser = String(aEl.value ?? "").trim();
+  const ok = ansUser !== "" && ansUser === ansExpected;
+
+  feedback.style.display = "block";
+  feedback.className = "result " + (ok ? "ok" : "ng");
+  feedback.textContent = ok ? "✅ 正解！" : "❌ ちがうよ…";
+
+  if(ok){
+    score += 10;
+    scoreEl.textContent = score;
+    moveTrain();
+    nextBtn.focus();
+  }else{
+    qEl.classList.remove("fade"); // 直前のfadeを外してから
+    void qEl.offsetWidth;         // reflow
+    qEl.classList.add("shake");
+  }
+}
+
+function next(){
+  if(idx < questions.length-1){
+    idx++;
+    render();
+  }else{
+    // 終了
+    barEl.style.width = "100%";
+    feedback.style.display = "block";
+    feedback.className = "result ok";
+    feedback.textContent = `🎉 到着！あなたのスコアは ${score} 点`;
+    if(score > best){
+      best = score;
+      localStorage.setItem("train_quiz_best", String(best));
+    }
+    bestEl.textContent = best;
+  }
+}
+
+/* ===========================
+   4) イベント
+   =========================== */
+submitBtn.addEventListener("click", judge);
+nextBtn.addEventListener("click", next);
+$("#restart").addEventListener("click", ()=>{
+  score = 0; scoreEl.textContent = "0";
+  idx = 0; order = [...questions.keys()];
+  trainEl.style.transform = `translateX(0px)`;
+  render();
+});
+$("#shuffle").addEventListener("click", ()=>{
+  // フィッシャー–イェーツでシャッフル
+  order = [...questions.keys()];
+  for(let i=order.length-1;i>0;i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  idx = 0; score = 0; scoreEl.textContent = "0";
+  trainEl.style.transform = `translateX(0px)`;
+  render();
+});
+$("#showHint").addEventListener("click", ()=>{
+  const i = order[idx];
+  hintEl.textContent = "💡 ヒント： " + (questions[i].hint || "問題文をよく読もう！");
+  hintEl.style.display = "block";
+});
+
+/* キーボード操作 */
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter"){ judge(); }
+  if(e.key.toLowerCase() === "n"){ next(); }
+});
+
+/* 初期化 */
+(function init(){
+  bestEl.textContent = best;
+  scoreEl.textContent = score;
+  totalEl.textContent = questions.length;
+  render();
+})();
+</script>
+</body>
+</html>
